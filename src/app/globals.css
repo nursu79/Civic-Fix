@@ -1,26 +1,460 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+Ethiopic:wght@200;300;400;500;600;700&family=Menbere:wght@200;300;400;500;600;700&display=swap');
+
 @import "tailwindcss";
 
+/* ============================================
+   CIVICFIX DESIGN SYSTEM v3.2
+   Sovereign Type Hierarchy & High Contrast
+   ============================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Sovereign Light Palette */
+  --bone-white: #F8F9FA;
+  --soft-pearl: #F1F5F9;
+  --mist-teal: #E0F2F1;
+  --deep-navy: #0F172A; /* Ink Black */
+  --slate-gray: #0F172A; /* Remapped to Ink Black for High Contrast */
+  --teal-primary: #0D9488;
+  --teal-light: #E0F2F1;
+  
+  /* Text Logic (High Contrast) */
+  --text-primary: var(--deep-navy);
+  --text-secondary: var(--deep-navy); /* No random grays */
+  --text-muted: #0D9488; /* Use Teal for muted/tertiary */
+  
+  /* Accents */
+  --accent-primary: var(--teal-primary);
+  --accent-secondary: #0f766e;
+  
+  /* Typography Scale */
+  --amharic-scale: 0.5;
+  
+  /* Typography */
+  --font-sans: 'Instrument Sans', system-ui, sans-serif; /* Navbar DNA */
+  --font-ethiopic: 'Menbere', sans-serif;
+  
+  /* Line Heights (Editorial Strictness) */
+  --lh-heading: 1.2;
+  --lh-body: 1.6;
+  --lh-ethiopic: 1.0; /* Reduced from 2.1 for tighter look with smaller font */
+
+  /* Glass v6 (Light Minimalism) */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  
+  /* Patterns */
+  --blueprint-grid: linear-gradient(to right, rgba(13, 148, 136, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(13, 148, 136, 0.05) 1px, transparent 1px);
+  --blueprint-size: 40px 40px;
+
+  /* Layered Mesh Gradient - Enhanced Vibrancy */
+  --mesh-gradient: 
+    radial-gradient(at 0% 0%, rgba(20, 184, 166, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(20, 184, 166, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(6, 182, 212, 0.1) 0px, transparent 50%);
+    /* Removed linear gradient to allow background color to show through cleanly */
 }
 
+/* ============================================
+   TAILWIND THEME EXTENSION
+   ============================================ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-surface-elevated: var(--surface-elevated);
+  
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-muted: var(--text-muted);
+  
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-tertiary: var(--accent-tertiary);
+  
+  /* Explicit Color Tokens */
+  --color-teal-primary: var(--teal-primary);
+  --color-deep-navy: var(--deep-navy);
+  --color-slate-gray: var(--slate-gray);
+  --color-bone-white: var(--bone-white);
+  
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+
+  --font-sans: var(--font-sans);
+  --font-heading-ethiopic: var(--font-heading-ethiopic);
+  --font-ethiopic: var(--font-ethiopic);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ============================================
+   BASE STYLES
+   ============================================ */
+body {
+  background: var(--bone-white);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 400; 
+  line-height: var(--lh-body);
+  letter-spacing: -0.01em; /* Slight tightness for Instrument Sans */
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  letter-spacing: -0.05em; /* tracking-tighter */
+  font-weight: 700; /* font-bold / extrabold matches Navbar medium+ */
+  line-height: var(--lh-heading);
+}
+h2{
+  color: #0D9488;
+}
+
+/* ... existing code ... */
+
+/* ============================================
+   AMHARIC TYPOGRAPHY (MENBERE LUXURY PROTOCOL)
+   ============================================ */
+[lang="am"],
+.font-ethiopic,
+.lang-am {
+  font-family: var(--font-ethiopic);
+  line-height: var(--lh-ethiopic) !important; /* Adjusted line height */
+  font-size: var(--amharic-scale) !important; /* Scale back to 1.0 */
+  font-weight: 200 !important; /* Extra Light */
+  letter-spacing: 0.02em;
+}
+
+h1:lang(am), h2:lang(am), h3:lang(am), h4:lang(am), .heading-ethiopic {
+  font-family: var(--font-ethiopic);
+  font-weight: 00 !important; /* Light heading weight */
+  line-height: 1.4 !important; /* Headings slightly tighter than body */
+}
+h2:lang(am){
+  font-weight: 800 !important; /* Light heading weight */
+}
+
+
+/* Atmospheric Mesh Layer */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--blueprint-grid);
+  background-size: var(--blueprint-size);
+  pointer-events: none;
+  z-index: 0;
+  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+}
+
+/* Static Teal Glow for Hero Depth */
+.hero-depth-glow {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100vw;
+  height: 100vh;
+  background: var(--mesh-gradient);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Vector Map Backdrop */
+.hero-map-backdrop {
+  position: absolute;
+  inset: 0;
+  background-image: var(--hero-map);
+  background-size: 800px 800px;
+  background-position: center;
+  opacity: 0.1;
+  mix-blend-mode: multiply;
+  z-index: 1; /* Above glow */
+}
+
+/* Snappy Motion optimizations */
+.snappy-card {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Animated Mesh Gradient Flare */
+.mesh-flare {
+  position: fixed;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(20, 184, 166, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+  transition: background 0.3s ease;
+}
+
+/* Edge Blur Refinement - Less Suffocating */
+.edge-blur {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8vh;
+  background: linear-gradient(to bottom, transparent, rgba(5, 44, 44, 0.2));
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  z-index: 40;
+}
+
+/* ============================================
+   INSTRUMENTATION STYLES
+   ============================================ */
+.tag-instrument {
+  background: rgba(13, 148, 136, 0.05); /* teal-600/5 */
+  border: 1px solid rgba(13, 148, 136, 0.1);
+  box-shadow: none;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.35rem 1rem;
+  border-radius: 99px;
+  color: var(--teal-primary);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+.geometric-clip-arch {
+  clip-path: path('M 0,200 A 200,200 0 1,1 400,200 V 400 H 0 Z');
+}
+
+.geometric-clip-blob {
+  clip-path: url('#blob-clip'); /* For more complex SVG shapes */
+}
+
+.nav-pill {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid #e2e8f0; /* border-zinc-200 */
+  border-radius: 999px;
+  box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
+}
+/* ============================================
+   AMHARIC TYPOGRAPHY (MENBERE LUXURY PROTOCOL)
+   ============================================ */
+[lang="am"],
+.font-ethiopic,
+.lang-am {
+  font-family: var(--font-ethiopic);
+  line-height: 2.2 !important; /* Premium paragraph spacing */
+  font-size: 1em !important; /* Precision scaling (+12%) */
+  font-weight: 200 !important; /* Sharp, light aesthetic */
+  letter-spacing: 0.02em;
+}
+
+h1:lang(am), h2:lang(am), h3:lang(am), h4:lang(am), .heading-ethiopic {
+  font-family: var(--font-ethiopic);
+  font-weight: 300 !important; /* Elegant heading weight */
+  line-height: 1.6 !important;
+}
+
+/* RTL support for Amharic if needed */
+[dir="rtl"] {
+  text-align: right;
+}
+
+/* ============================================
+   GLASSMORPHISM UTILITIES
+   ============================================ */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-hover:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ============================================
+   GLOW EFFECTS
+   ============================================ */
+.glow {
+  box-shadow: var(--shadow-glow);
+}
+
+.glow-text {
+  text-shadow: 0 0 20px rgba(20, 184, 166, 0.5);
+}
+
+.glow-border {
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.3),
+              0 0 20px rgba(20, 184, 166, 0.1);
+}
+
+/* ============================================
+   GRADIENT TEXT
+   ============================================ */
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================
+   SKELETON LOADER
+   ============================================ */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--glass-bg) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    var(--glass-bg) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================
+   PULSE ANIMATION (for markers)
+   ============================================ */
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse-ring {
+  animation: pulseRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ============================================
+   SELECTION
+   ============================================ */
+::selection {
+  background: rgba(20, 184, 166, 0.3);
+  color: var(--text-primary);
+}
+
+/* ============================================
+   FOCUS STYLES
+   ============================================ */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   LINK STYLES
+   ============================================ */
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--accent-primary-hover);
+}
+
+/* ============================================
+   BUTTON BASE
+   ============================================ */
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   CATEGORY COLORS
+   ============================================ */
+.category-roads { --category-color: var(--category-roads); }
+.category-water { --category-color: var(--category-water); }
+.category-sanitation { --category-color: var(--category-sanitation); }
+.category-lighting { --category-color: var(--category-lighting); }
+.category-safety { --category-color: var(--category-safety); }
+.category-parks { --category-color: var(--category-parks); }
+
+/* ============================================
+   STATUS BADGES
+   ============================================ */
+.status-open { 
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--status-open);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-in_progress { 
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--status-progress);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.status-resolved { 
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--status-resolved);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-closed { 
+  background: rgba(107, 114, 128, 0.15);
+  color: var(--status-closed);
+  border: 1px solid rgba(107, 114, 128, 0.3);
 }

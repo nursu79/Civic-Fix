@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CivicFix 🇪🇹
+### Improving our neighborhood, together.
 
-## Getting Started
+**CivicFix** is a simple way for you to report problems in your city—like a broken water pipe, a pothole, or a streetlight that doesn't work—and make sure the right people fix them.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 👋 What can you do with CivicFix?
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+*   **Report in Seconds:** Just take a photo of the problem and mark where it is on the map.
+*   **See What’s Happening:** Follow your report to see when it is being fixed.
+*   **Support Your Neighbors:** See what others have reported and "upvote" the issues that you also care about. The more people who care, the faster it gets fixed!
+*   **Beautifully Ethiopian:** Designed specifically for us, with clear Amharic text and an easy-to-use menu.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🏗️ Why does this help our community?
 
-## Learn More
+### 📢 Your voice is heard
+Instead of waiting and wondering, you have a direct way to show the city exactly what needs fixing.
 
-To learn more about Next.js, take a look at the following resources:
+### 📍 Better for our city
+It helps the city see which areas need help the most. If a whole neighborhood reports a water leak, it becomes a top priority.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 🇪🇹 Pride in our home
+We deserve a clean, safe, and working city. CivicFix helps us all take care of our home, one street at a time.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*CivicFix — Building a better Ethiopia, one report at a time.*
