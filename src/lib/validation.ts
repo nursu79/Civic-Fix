@@ -15,10 +15,7 @@ export const IssueCreateSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional().nullable(),
   category: z.enum(ISSUE_CATEGORIES, {
-    errorMap: () => ({
-      message:
-        "Category must be one of: roads, water, sanitation, lighting, safety, parks",
-    }),
+    message: "Category must be one of: roads, water, sanitation, lighting, safety, parks"
   }),
   lat: z.number().optional().nullable(),
   lng: z.number().optional().nullable(),
