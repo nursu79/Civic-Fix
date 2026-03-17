@@ -6,6 +6,9 @@ import { User } from "@supabase/supabase-js";
 import { Profile } from "@/lib/supabase";
 import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
+import { SessionWarningModal } from "@/components/features/SessionWarningModal";
 
 interface AuthContextType {
   user: User | null;
@@ -35,8 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, profile, isLoading, error, refetch, setProfile } = useUserSession();
   const supabase = createClient();
   const locale = useLocale();
+  const router = useRouter();
+  
+  // Initialize Session Timeout Management
+  const { showWarning, extendSession } = useSessionTimeout();
 
-  // Handle immediate session detection to prevent flicker
+  // Handle immediate session detection and global state changes
   useEffect(() => {
     const checkSession = async () => {
       const {
@@ -47,7 +54,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
     checkSession();
-  }, [supabase]);
+
+    // Listen to global auth changes (like token expiry or external sign out)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          // Clear everything
+          router.push(`/${locale}/login`);
+        } else if (event === 'TOKEN_REFRESHED') {
+          // We have a fresh token, optionally we could reset timers here, 
+          // but our hook handles it gracefully when we manually extend.
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase, router, locale]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -149,6 +173,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updatePassword,
       }}
     >
+      {/* 
+        This is where the magic happens. 
+        Skeletons are handled by useUserSession, we just wrap them here so the whole app benefits. 
+        Actually, we can inject the SessionWarningModal here cleanly. 
+      */}
+      {showWarning && (
+        <SessionWarningModal
+          isOpen={showWarning}
+          onExtend={extendSession}
+          onLogout={signOut}
+        />
+      )}
       {children}
     </AuthContext.Provider>
   );

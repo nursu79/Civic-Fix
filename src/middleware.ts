@@ -41,19 +41,27 @@ export async function middleware(request: NextRequest) {
     // Protect routes that require authentication
     const pathname = request.nextUrl.pathname;
     
-    // We skip the locale prefix (e.g. /en/..., /am/...) to check the path
-    const pathWithoutLocale = pathname.replace(/^\/(?:en|am)(\/.*)?$/, '$1') || '/';
-
+    // Exact match for protected paths (ignoring the locale prefix like /en/ or /am/)
     const protectedPaths = ['/issues', '/report', '/dashboard', '/profile', '/notifications'];
+    
+    // Check if the current path starts with any of the protected paths 
+    // after stripping the optional /[locale] prefix
+    const pathWithoutLocale = pathname.replace(/^\/(?:en|am)/, '') || '/';
+    
     const isProtectedPath = protectedPaths.some(p => 
       pathWithoutLocale === p || pathWithoutLocale.startsWith(`${p}/`)
     );
 
     if (!user && isProtectedPath) {
       // Redirect to login page
-      const locale = pathname.match(/^\/(en|am)/)?.[1] || defaultLocale;
+      const localeMatch = pathname.match(/^\/(en|am)/);
+      const locale = localeMatch ? localeMatch[1] : defaultLocale;
       const redirectUrl = new URL(`/${locale}/login`, request.url);
-      return NextResponse.redirect(redirectUrl);
+      
+      // Prevent infinite redirect loops just in case
+      if (pathWithoutLocale !== '/login') {
+        return NextResponse.redirect(redirectUrl);
+      }
     }
     
   } catch (err) {

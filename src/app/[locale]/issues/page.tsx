@@ -43,23 +43,27 @@ export default function IssuesPage() {
   const locale = useLocale();
   const isAmharic = locale === 'am';
 
-  const { profile } = useAuth();
+  const { profile, isLoading: isAuthLoading } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [sortBy, setSortBy] = useState('recent');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterByResidence, setFilterByResidence] = useState(false);
+  
+  // Set initial state synchronously if profile is already loaded (from a client-side navigation)
+  const [filterByResidence, setFilterByResidence] = useState<boolean>(!!profile?.residence);
+  const [hasAutoSet, setHasAutoSet] = useState(!!profile?.residence);
+  
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const supabase = createClient();
 
   useEffect(() => {
-    if (profile && profile.residence) {
+    // Prevent overwriting manual selections unless it's the very first load
+    if (!hasAutoSet && !isAuthLoading && profile?.residence) {
       setFilterByResidence(true);
-    } else {
-      setFilterByResidence(false);
+      setHasAutoSet(true);
     }
-  }, [profile?.residence]);
+  }, [profile?.residence, isAuthLoading, hasAutoSet]);
 
   const { 
     issues, 

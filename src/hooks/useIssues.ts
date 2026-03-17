@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Issue } from '@/lib/types';
 import { Category, Status } from '@/lib/utils';
@@ -35,8 +35,11 @@ export function useIssues(options: UseIssuesOptions = {}): UseIssuesReturn & { h
   const [totalCount, setTotalCount] = useState(0);
   
   const supabase = createClient();
+  const fetchIdRef = useRef(0);
   
   const fetchIssues = useCallback(async (isLoadMore = false, targetPage?: number) => {
+    const currentFetchId = ++fetchIdRef.current;
+    
     setIsLoading(true);
     if (!isLoadMore && targetPage === undefined) {
       setIssues([]);
@@ -57,9 +60,17 @@ export function useIssues(options: UseIssuesOptions = {}): UseIssuesReturn & { h
       if (location) params.set('location', location);
 
       const res = await fetch(`/api/issues?${params.toString()}`);
+      
+      // If a newer fetch was initiated, abandon this stale result
+      if (currentFetchId !== fetchIdRef.current) return;
+      
       if (!res.ok) throw new Error('Failed to fetch issues from API');
       
       const responseData = await res.json();
+      
+      // Secondary check just to be absolutely sure
+      if (currentFetchId !== fetchIdRef.current) return;
+      
       const { issues: fetchedIssues, count } = responseData;
       
       const data = fetchedIssues;
