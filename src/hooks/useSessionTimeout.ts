@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { usePathname } from 'next/navigation';
 
 const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const WARNING_MS = 2 * 60 * 1000; // 2 minutes before timeout
@@ -12,7 +12,9 @@ export function useSessionTimeout() {
   const warningRef = useRef<NodeJS.Timeout | null>(null);
   const supabase = createClient();
   const router = useRouter();
-  const locale = useLocale();
+  const pathname = usePathname();
+  const localeMatch = pathname?.match(/^\/(en|am)/);
+  const locale = localeMatch ? localeMatch[1] : 'en';
 
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut();

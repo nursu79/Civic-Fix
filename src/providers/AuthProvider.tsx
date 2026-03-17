@@ -5,8 +5,7 @@ import { useUserSession } from "@/hooks/useUserSession";
 import { User } from "@supabase/supabase-js";
 import { Profile } from "@/lib/supabase";
 import { createClient } from "@/lib/supabase/client";
-import { useLocale } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { SessionWarningModal } from "@/components/features/SessionWarningModal";
 
@@ -37,8 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Use production useUserSession hook (Single Source of Truth)
   const { user, profile, isLoading, error, refetch, setProfile } = useUserSession();
   const supabase = createClient();
-  const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
+  const localeMatch = pathname?.match(/^\/(en|am)/);
+  const locale = localeMatch ? localeMatch[1] : 'en';
   
   // Initialize Session Timeout Management
   const { showWarning, extendSession } = useSessionTimeout();

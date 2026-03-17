@@ -11,21 +11,46 @@ const intlMiddleware = createIntlMiddleware({
 });
 
 export async function middleware(request: NextRequest) {
-  // Run next-intl middleware first to handle locale routing/redirects.
+  const pathname = request.nextUrl.pathname;
+
+  // Admin routes bypass intl middleware — handle separately
+  if (pathname.startsWith('/admin')) {
+    try {
+      const supabase = createServerClient<Database>(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll().map(({ name, value }) => ({ name, value }));
+            },
+            setAll() {}, // reads only in middleware
+          },
+        },
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Allow not-authorized page without redirect
+      if (!user && pathname !== '/admin/not-authorized') {
+        return NextResponse.redirect(new URL('/en/login', request.url));
+      }
+    } catch (err) {
+      console.error('Admin middleware auth error:', err);
+    }
+    return NextResponse.next();
+  }
+
+  // Run next-intl middleware for all citizen routes
   const response = intlMiddleware(request);
 
   try {
-    // Refresh Supabase session cookies on every page request.
     const supabase = createServerClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           getAll() {
-            return request.cookies.getAll().map(({ name, value }) => ({
-              name,
-              value,
-            }));
+            return request.cookies.getAll().map(({ name, value }) => ({ name, value }));
           },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
@@ -38,34 +63,23 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Protect routes that require authentication
-    const pathname = request.nextUrl.pathname;
-    
-    // Exact match for protected paths (ignoring the locale prefix like /en/ or /am/)
+    // Citizen protected paths (after stripping locale prefix)
     const protectedPaths = ['/issues', '/report', '/dashboard', '/profile', '/notifications'];
-    
-    // Check if the current path starts with any of the protected paths 
-    // after stripping the optional /[locale] prefix
-    const pathWithoutLocale = pathname.replace(/^\/(?:en|am)/, '') || '/';
-    
-    const isProtectedPath = protectedPaths.some(p => 
+    const pathWithoutLocale = pathname.replace(/^\/(en|am)/, '') || '/';
+
+    const isProtectedPath = protectedPaths.some(p =>
       pathWithoutLocale === p || pathWithoutLocale.startsWith(`${p}/`)
     );
 
     if (!user && isProtectedPath) {
-      // Redirect to login page
       const localeMatch = pathname.match(/^\/(en|am)/);
       const locale = localeMatch ? localeMatch[1] : defaultLocale;
-      const redirectUrl = new URL(`/${locale}/login`, request.url);
-      
-      // Prevent infinite redirect loops just in case
       if (pathWithoutLocale !== '/login') {
-        return NextResponse.redirect(redirectUrl);
+        return NextResponse.redirect(new URL(`/${locale}/login`, request.url));
       }
     }
-    
+
   } catch (err) {
-    // If anything goes wrong, fall back to the original response.
     console.error('Middleware auth error:', err);
   }
 
@@ -73,9 +87,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Match all pathnames except for
-  // - API routes
-  // - Static files
-  // - _next internals
-  matcher: ["/((?!api|_next|_vercel|.*\\..*).*)"],
+  matcher: ["/((?!api|_next|_vercel|.*\\..*).)"],
 };
