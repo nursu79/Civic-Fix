@@ -12,7 +12,7 @@ interface SessionWarningModalProps {
 }
 
 export function SessionWarningModal({ isOpen, onExtend, onLogout }: SessionWarningModalProps) {
-  const t = useTranslations('auth'); // Adjust if you want specific translations
+  const t = useTranslations('auth'); // Restored translation context
 
   return (
     <AnimatePresence>

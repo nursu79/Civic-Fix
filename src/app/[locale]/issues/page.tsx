@@ -49,21 +49,10 @@ export default function IssuesPage() {
   const [sortBy, setSortBy] = useState('recent');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Set initial state synchronously if profile is already loaded (from a client-side navigation)
-  const [filterByResidence, setFilterByResidence] = useState<boolean>(!!profile?.residence);
-  const [hasAutoSet, setHasAutoSet] = useState(!!profile?.residence);
+  // Default filterByResidence to false so all issues show by default
+  const [filterByResidence, setFilterByResidence] = useState<boolean>(false);
   
   const debouncedSearch = useDebounce(searchQuery, 300);
-
-  const supabase = createClient();
-
-  useEffect(() => {
-    // Prevent overwriting manual selections unless it's the very first load
-    if (!hasAutoSet && !isAuthLoading && profile?.residence) {
-      setFilterByResidence(true);
-      setHasAutoSet(true);
-    }
-  }, [profile?.residence, isAuthLoading, hasAutoSet]);
 
   const { 
     issues, 

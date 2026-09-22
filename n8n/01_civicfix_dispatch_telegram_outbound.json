@@ -1,0 +1,81 @@
+{
+  "name": "01 - CivicFix Outbound Dispatch to Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "civicfix-dispatch",
+        "options": {}
+      },
+      "name": "CivicFix Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "civicfix-dispatch-trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $input.item.json || {};\nconst body = inputJson.body || inputJson;\nconst issue = body.issue || inputJson.issue || {};\nconst issueId = issue.id || body.issue_id || inputJson.issue_id || \"\";\nconst images = issue.images || body.images || [];\nconst mapsUrl = issue.maps_link || (issue.lat && issue.lng ? `https://www.google.com/maps?q=${issue.lat},${issue.lng}` : \"https://maps.google.com\");\n\nconst formattedPriority = typeof issue.priority_score === 'number' ? (issue.priority_score >= 1 ? Math.round(issue.priority_score) : issue.priority_score.toFixed(2)) : (issue.priority_score || '0');\n\nlet formattedMessage = \"🚨 *CIVICFIX MUNICIPAL DISPATCH*\\n\\n\" +\n  \"📌 *Issue*: \" + (issue.title || \"Infrastructure Defect\") + \"\\n\" +\n  \"📄 *Description*: \" + (issue.description || \"No detailed description provided.\") + \"\\n\" +\n  \"📍 *Location*: \" + (issue.address || \"Addis Ababa\") + \"\\n\" +\n  \"🏙️ *Sub-City*: \" + (issue.subcity || \"Bole\") + \"\\n\" +\n  \"👷 *Assigned Unit*: \" + (issue.assigned_unit || \"Field Unit 1\") + \"\\n\" +\n  \"⚡ *Priority Score*: \" + formattedPriority + \"\\n\" +\n  \"📝 *Officer Notes*: \" + (body.dispatch_notes || \"Immediate priority repair requested.\") + \"\\n\\n\";\n\nif (images && images.length > 0) {\n  formattedMessage += \"🖼️ [View Attached Issue Photo](\" + images[0] + \")\\n\\n\";\n}\n\nformattedMessage += \"👇 *Use the interactive buttons below on your phone:*\";\n\nconst inlineKeyboard = [\n  [\n    { \"text\": \"🗺️ Open Navigation\", \"url\": mapsUrl }\n  ],\n  [\n    { \"text\": \"📸 Submit Repair Proof\", \"callback_data\": `resolve:${issueId}` },\n    { \"text\": \"💵 Log Cost (4500 ETB)\", \"callback_data\": `cost:${issueId}` }\n  ],\n  [\n    { \"text\": \"🌐 አማርኛ / English\", \"callback_data\": `lang:${issueId}` }\n  ]\n];\n\nreturn {\n  json: {\n    issue_id: issueId,\n    subcity: issue.subcity || \"Bole\",\n    assigned_unit: issue.assigned_unit || \"Field Unit 1\",\n    formatted_message: formattedMessage,\n    inline_keyboard: inlineKeyboard,\n    maps_link: mapsUrl,\n    raw_payload: body\n  }\n};"
+      },
+      "name": "Format Task & Build Inline Buttons",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.raw_payload.chat_id || '404755091' }}",
+        "text": "={{ $json.formatted_message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": "={{ JSON.stringify({ inline_keyboard: $json.inline_keyboard }) }}"
+        }
+      },
+      "name": "Send Interactive Dispatch Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "civicfix-telegram-credentials",
+          "name": "CivicFix Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "CivicFix Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Task & Build Inline Buttons",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Task & Build Inline Buttons": {
+      "main": [
+        [
+          {
+            "node": "Send Interactive Dispatch Telegram Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}

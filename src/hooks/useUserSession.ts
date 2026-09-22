@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -27,7 +27,7 @@ export function useUserSession(): UseUserSessionReturn {
   const router = useRouter();
   const supabase = createClient();
 
-  const fetchUserAndProfile = async (retryCount = 0, quiet = false): Promise<void> => {
+  const fetchUserAndProfile = useCallback(async (retryCount = 0, quiet = false): Promise<void> => {
     try {
       if (!quiet) setIsLoading(true);
       setError(null);
@@ -39,6 +39,9 @@ export function useUserSession(): UseUserSessionReturn {
       if (!session) {
         setUser(null);
         setProfile(null);
+        if (typeof document !== 'undefined') {
+          document.cookie = 'sb-user-role=; path=/; max-age=0; SameSite=Lax';
+        }
         setIsLoading(false);
         return;
       }
@@ -54,55 +57,46 @@ export function useUserSession(): UseUserSessionReturn {
         .single();
 
       if (profileError) {
-        console.error('useUserSession: profile fetch error', {
-          code: profileError.code,
-          message: profileError.message,
-          details: profileError.details,
-          hint: profileError.hint
-        });
-        // Profile doesn't exist yet - retry up to 3 times (trigger might be processing)
-        if (profileError.code === 'PGRST116' && retryCount < 3) {
-          console.log(`Profile not found, retrying... (${retryCount + 1}/3)`);
-          await new Promise(resolve => setTimeout(resolve, 800 * (retryCount + 1)));
-          return fetchUserAndProfile(retryCount + 1);
+        if (profileError.code !== 'PGRST116') {
+          console.warn('useUserSession profile fetch notice:', profileError.message || profileError.details || profileError.code);
         }
-        
-        if (profileError.code === 'PGRST116') {
-          // If profile still missing, we still have the user object
-          setProfile(null);
-        } else {
-          throw profileError;
-        }
+        setProfile(null);
       } else {
-        setProfile(profileData);
+        const typedProfile = profileData as Profile | null;
+        setProfile(typedProfile);
+        if (typeof document !== 'undefined' && typedProfile?.role) {
+          document.cookie = `sb-user-role=${typedProfile.role}; path=/; max-age=604800; SameSite=Lax`;
+        }
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load session';
+    } catch (err: any) {
+      const message = err?.message || err?.details || (typeof err === 'string' ? err : 'Failed to load session');
       setError(message);
-      console.error('useUserSession error:', err);
+      console.error('useUserSession error:', message);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [supabase]);
+
+  const refetch = useCallback((quiet?: boolean) => fetchUserAndProfile(0, quiet), [fetchUserAndProfile]);
 
   useEffect(() => {
-    // Initial fetch
-    fetchUserAndProfile();
+    // Single initial fetch on mount
+    fetchUserAndProfile(0, false);
 
-    // Listen for auth state changes
+    // Listen for auth state changes (ignoring INITIAL_SESSION to prevent double fetches)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth event change:', event);
-        
         if (session) {
           setUser(session.user);
-          // Only fetch profile if event suggests it's needed (login or token refresh)
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-            await fetchUserAndProfile();
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            await fetchUserAndProfile(0, true);
           }
         } else {
           setUser(null);
           setProfile(null);
+          if (typeof document !== 'undefined') {
+            document.cookie = 'sb-user-role=; path=/; max-age=0; SameSite=Lax';
+          }
           setIsLoading(false);
         }
       }
@@ -111,14 +105,14 @@ export function useUserSession(): UseUserSessionReturn {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchUserAndProfile, supabase]);
 
   return {
     user,
     profile,
     isLoading,
     error,
-    refetch: (quiet?: boolean) => fetchUserAndProfile(0, quiet),
+    refetch,
     setProfile,
   };
 }

@@ -7,12 +7,12 @@ import { createClient } from '@/lib/supabase/client';
 import { cn, translateNotification } from '@/lib/utils';
 import Link from 'next/link';
 import { useAuth } from '@/providers';
-import { useLocale, useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { NextIntlClientProvider, useLocale, useTranslations } from 'next-intl';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface Notification {
   id: string;
-  type: 'status_change' | 'upvote' | 'comment' | 'follow' | 'system';
+  type: 'status_change' | 'upvote' | 'comment' | 'follow' | 'system' | 'escalation' | 'escalation_response';
   title: string;
   message: string;
   link: string;
@@ -20,10 +20,43 @@ interface Notification {
   created_at: string;
 }
 
+const defaultMessages = {
+  notifications: {
+    markAsRead: 'Mark as read',
+    delete: 'Delete',
+    types: {
+      status_change: 'Status Change',
+      upvote: 'Upvote',
+      comment: 'Comment',
+      follow: 'Follow',
+      system: 'System Notice',
+      escalation: 'Escalation Alert',
+      escalation_response: 'Escalation Response',
+    },
+  },
+  notificationsPopout: {
+    title: 'Notifications',
+    new: 'new',
+    markAllRead: 'Mark all as read',
+    allCaughtUp: 'All caught up!',
+    viewDetails: 'View Details',
+    seeAll: 'See All Notifications',
+  },
+};
+
 export function NotificationCenter() {
+  return (
+    <NextIntlClientProvider locale="en" messages={defaultMessages}>
+      <NotificationCenterContent />
+    </NextIntlClientProvider>
+  );
+}
+
+function NotificationCenterContent() {
   const { user } = useAuth();
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname() || '';
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -31,6 +64,22 @@ export function NotificationCenter() {
 
   const nt = useTranslations('notifications');
   const npt = useTranslations('notificationsPopout');
+
+  const getTargetUrl = (link?: string) => {
+    if (link && (link.startsWith('/admin') || link.startsWith('/department'))) {
+      return link;
+    }
+    if (pathname.startsWith('/admin')) {
+      return '/admin/dashboard?tab=escalations';
+    }
+    if (pathname.startsWith('/department')) {
+      return '/department/dashboard?tab=escalations';
+    }
+    if (link) {
+      return `/${locale}${link.startsWith('/') ? '' : '/'}${link}`;
+    }
+    return `/${locale}/notifications`;
+  };
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -64,8 +113,14 @@ export function NotificationCenter() {
         )
         .subscribe();
 
+      // Reliable polling fallback every 4 seconds
+      const interval = setInterval(() => {
+        fetchNotifications();
+      }, 4000);
+
       return () => {
         supabase.removeChannel(channel);
+        clearInterval(interval);
       };
     }
   }, [user]);
@@ -139,12 +194,12 @@ export function NotificationCenter() {
       <AnimatePresence>
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+            <div className="fixed inset-0 z-[100]" onClick={() => setIsOpen(false)} />
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute right-0 mt-3 w-80 md:w-96 bg-white rounded-3xl border border-zinc-100 shadow-2xl z-50 overflow-hidden"
+              className="absolute right-0 mt-3 w-80 md:w-96 bg-white rounded-3xl border border-zinc-100 shadow-2xl z-[101] overflow-hidden"
             >
               <div className="p-4 border-b border-zinc-50 flex items-center justify-between bg-zinc-50/50">
                 <h3 className="text-sm font-black text-deep-navy uppercase tracking-widest flex items-center gap-2">
@@ -189,7 +244,8 @@ export function NotificationCenter() {
                         onClick={() => {
                           setIsOpen(false);
                           markAsRead(n.id);
-                          window.location.href = `/${locale}/notifications`;
+                          const target = getTargetUrl(n.link);
+                          router.push(target);
                         }}
                         className={cn(
                           "p-4 transition-colors relative group cursor-pointer",
@@ -215,17 +271,17 @@ export function NotificationCenter() {
                                 {new Date(n.created_at).toLocaleDateString(locale === 'am' ? 'am-ET' : 'en-US', { month: 'short', day: 'numeric' })}
                               </span>
                               {n.link && (
-                                <Link 
-                                  href={`/${locale}${n.link.startsWith('/') ? '' : '/'}${n.link}`}
+                                <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setIsOpen(false);
                                     markAsRead(n.id);
+                                    router.push(getTargetUrl(n.link));
                                   }}
                                   className="text-[9px] font-black text-teal-600 uppercase hover:underline"
                                 >
                                   {npt('viewDetails')}
-                                </Link>
+                                </button>
                               )}
                             </div>
                           </div>
@@ -267,13 +323,15 @@ export function NotificationCenter() {
               </div>
 
               <div className="p-3 bg-zinc-100/50 border-t border-zinc-100 text-center">
-                <Link 
-                  href={`/${locale}/notifications`} 
-                  onClick={() => setIsOpen(false)}
-                  className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-deep-navy transition-colors"
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    router.push(getTargetUrl());
+                  }}
+                  className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-deep-navy transition-colors cursor-pointer"
                 >
-                  {npt('seeAll')}
-                </Link>
+                  {pathname.startsWith('/admin') || pathname.startsWith('/department') ? 'View Escalation Center' : npt('seeAll')}
+                </button>
               </div>
             </motion.div>
           </>

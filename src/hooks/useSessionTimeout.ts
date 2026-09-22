@@ -17,8 +17,13 @@ export function useSessionTimeout() {
   const locale = localeMatch ? localeMatch[1] : 'en';
 
   const handleLogout = useCallback(async () => {
-    await supabase.auth.signOut();
-    router.push(`/${locale}/login?expired=true`);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Timeout signout error:", e);
+    } finally {
+      router.push(`/${locale}/login?expired=true`);
+    }
   }, [supabase, router, locale]);
 
   const resetTimer = useCallback(() => {

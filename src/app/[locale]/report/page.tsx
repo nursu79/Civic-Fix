@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
@@ -76,6 +76,14 @@ export default function ReportPage() {
 
   const supabase = createClient();
 
+  // Revoke object URLs on unmount / image list change to prevent memory leaks
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const urls = formData.images.map(f => URL.createObjectURL(f));
+    setImageUrls(urls);
+    return () => { urls.forEach(url => URL.revokeObjectURL(url)); };
+  }, [formData.images]);
+
   const canProceed = () => {
     switch (currentStep) {
       case 0:
@@ -113,9 +121,9 @@ export default function ReportPage() {
 
     try {
       const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.user) {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
         setSubmitError(t('signInRequired'));
         setIsSubmitting(false);
         return;
@@ -124,7 +132,7 @@ export default function ReportPage() {
       let imageUrls: string[] = [];
       if (formData.images.length > 0) {
         const bucket = "issue-attachments";
-        const prefix = `${session.user.id}/${Date.now()}`;
+        const prefix = `${user.id}/${Date.now()}`;
         for (let i = 0; i < formData.images.length; i++) {
           const file = formData.images[i];
           const ext = file.name.split(".").pop() || "jpg";
@@ -167,11 +175,8 @@ export default function ReportPage() {
         return;
       }
 
-      if (
-        data.warning &&
-        Array.isArray(data.duplicates) &&
-        data.duplicates.length > 0
-      ) {
+      // 409 = duplicate detected; show warning without treating as error
+      if (res.status === 409 && Array.isArray(data.duplicates) && data.duplicates.length > 0) {
         setDuplicates(data.duplicates);
         setIsSubmitting(false);
         return;
@@ -568,11 +573,17 @@ export default function ReportPage() {
                         key={index}
                         className="relative aspect-square rounded-2xl overflow-hidden shadow-md"
                       >
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={`Upload ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
+                        {imageUrls[index] ? (
+                          <img
+                            src={imageUrls[index]}
+                            alt={`Upload ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-slate-100 flex items-center justify-center animate-pulse text-xs text-slate-400">
+                            Loading...
+                          </div>
+                        )}
                         <button
                           onClick={() => removeImage(index)}
                           className="absolute top-1 right-1 p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-600 backdrop-blur-sm transition-colors"

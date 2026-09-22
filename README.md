@@ -1,30 +1,63 @@
 # CivicFix 🇪🇹
 ### Improving our neighborhood, together.
 
-**CivicFix** is a simple way for you to report problems in your city—like a broken water pipe, a pothole, or a streetlight that doesn't work—and make sure the right people fix them.
+**CivicFix** is a modern civic engagement web application that enables citizens to report local urban infrastructure problems—such as water leaks, potholes, or streetlight outages—and track resolutions directly with municipal administration teams.
 
 ---
 
-## 👋 What can you do with CivicFix?
+## 🛠️ Tech Stack
 
-*   **Report in Seconds:** Just take a photo of the problem and mark where it is on the map.
-*   **See What’s Happening:** Follow your report to see when it is being fixed.
-*   **Support Your Neighbors:** See what others have reported and "upvote" the issues that you also care about. The more people who care, the faster it gets fixed!
-*   **Beautifully Ethiopian:** Designed specifically for us, with clear Amharic text and an easy-to-use menu.
-
----
-
-## 🏗️ Why does this help our community?
-
-### 📢 Your voice is heard
-Instead of waiting and wondering, you have a direct way to show the city exactly what needs fixing.
-
-### 📍 Better for our city
-It helps the city see which areas need help the most. If a whole neighborhood reports a water leak, it becomes a top priority.
-
-### 🇪🇹 Pride in our home
-We deserve a clean, safe, and working city. CivicFix helps us all take care of our home, one street at a time.
+- **Framework:** Next.js 15 (App Router) & React
+- **Language:** TypeScript
+- **Styling:** TailwindCSS, Lucide Icons, Framer Motion
+- **Database & Auth:** Supabase (PostgreSQL, Row Level Security, Auth, Storage)
+- **Internationalization:** `next-intl` (Amharic `am` & English `en`)
 
 ---
 
-*CivicFix — Building a better Ethiopia, one report at a time.*
+## ✨ Live Features
+
+* **📍 Interactive Issue Reporting:** Capture issues, attach photos, and pin locations on interactive maps.
+* **🌍 Full Bilingual Support:** Native English and Amharic localization with custom Ethiopic typography (`font-ethiopic`).
+* **👥 Community Upvoting:** Upvote reported neighborhood issues to signal community priority.
+* **👑 Multi-Role Workspaces:** Role-based dashboards for **Super Admins**, **Department Officers**, and **Citizens**.
+* **📁 Sector Dispatch Queues:** Department-level issue filtering, resolution note logging, and status tracking.
+* **🔑 Built-in Role Showcase:** Quick 1-click access panel on the sign-in page to test Admin and Department Head features.
+
+---
+
+## 🔮 Roadmap & Upcoming Iterations
+
+* **⚡ n8n Webhook Automation:** Event-driven triggers for automated field officer dispatch alerts.
+* **🤖 AI Issue Categorization & Priority Scoring:** Automated image recognition and dynamic priority scoring algorithms.
+* **📲 SMS & Telegram Bot Notifications:** Direct notification updates for citizens without active web sessions.
+* **📊 Municipal Predictive Analytics:** Spatial heatmaps and infrastructure failure forecasting for city planners.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+- Node.js 18+ and `npm`
+
+### 2. Installation & Setup
+```bash
+# Clone the repository
+git clone https://github.com/nursu79/Civic-Fix.git
+cd Civic-Fix
+
+# Install dependencies
+npm install
+
+# Set up environment variables (.env.local)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# Run local development server
+npm run dev
+```
+
+---
+
+*CivicFix — Building a better Ethiopia, one report at a time.* 🇪🇹

@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui';
-import { cn, formatRelativeTime, formatDate, categories, Category, statuses, Status } from '@/lib/utils';
+import { cn, formatRelativeTime, formatDate, formatPriorityScore, categories, Category, statuses, Status } from '@/lib/utils';
 import { useIssue } from '@/hooks/useIssues';
 import { createClient } from '@/lib/supabase/client';
 import { FollowIssueButton } from '@/components/features/FollowIssueButton';
@@ -68,7 +68,7 @@ export default function IssueDetailPage({ params }: PageParams) {
             .select('issue_id')
             .eq('issue_id', issue.id as any)
             .eq('user_id', user.id as any)
-            .single();
+            .maybeSingle();
           
           if (data) setHasUpvoted(true);
         }
@@ -348,7 +348,7 @@ export default function IssueDetailPage({ params }: PageParams) {
                 title="Priority Score"
               >
                 <Flag className="w-3.5 h-3.5" />
-                {t('priority')} {issue.priority_score || 0}
+                {t('priority')} {formatPriorityScore(issue.priority_score)}
               </span>
               <div className="ml-auto flex items-center gap-2 text-slate-400 text-sm font-semibold">
                 <Clock className="w-4 h-4" />
@@ -370,11 +370,82 @@ export default function IssueDetailPage({ params }: PageParams) {
             </div>
 
             <p className={cn(
-              "text-lg text-slate-600 leading-relaxed mb-10 whitespace-pre-wrap",
+              "text-lg text-slate-600 leading-relaxed mb-8 whitespace-pre-wrap",
               isAmharic && 'font-ethiopic'
             )}>
               {issue.description || t('noDescription')}
             </p>
+
+            {/* Field Operations & n8n Resolution Proof Card */}
+            {(issue.subcity || issue.assigned_unit || issue.status === 'in_progress' || issue.status === 'resolved' || issue.resolution_notes) && (
+              <div className={cn(
+                "rounded-3xl p-6 sm:p-8 mb-10 border transition-all shadow-sm",
+                issue.status === 'resolved' 
+                  ? "bg-emerald-50/70 border-emerald-200/80 text-emerald-950"
+                  : "bg-blue-50/70 border-blue-200/80 text-blue-950"
+              )}>
+                <div className="flex items-center justify-between gap-4 mb-4 pb-4 border-b border-current/10">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-white shadow-md",
+                      issue.status === 'resolved' ? "bg-emerald-600" : "bg-blue-600"
+                    )}>
+                      {issue.status === 'resolved' ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5 animate-pulse" />}
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-base tracking-tight">
+                        {issue.status === 'resolved' ? 'Field Resolution Completed & Verified' : 'Municipal Field Crew Dispatched'}
+                      </h4>
+                      <p className="text-xs opacity-75 font-medium">
+                        {issue.subcity ? `${issue.subcity} Sub-City` : 'Municipal Field Operations'} • {issue.assigned_unit || 'Assigned Field Unit'}
+                      </p>
+                    </div>
+                  </div>
+                  {issue.resolved_at && (
+                    <span className="text-xs font-bold px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full">
+                      Resolved {formatDate(issue.resolved_at, locale)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Resolution Notes & Cost */}
+                {issue.resolution_notes && (
+                  <div className="mb-4">
+                    <p className="text-xs font-black uppercase tracking-wider opacity-60 mb-1.5">Official Proof & Work Notes</p>
+                    <p className="text-sm font-semibold leading-relaxed bg-white/60 backdrop-blur-sm p-4 rounded-2xl border border-current/10">
+                      {issue.resolution_notes}
+                    </p>
+                  </div>
+                )}
+
+                {issue.billing_cost !== null && issue.billing_cost !== undefined && (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-100/90 text-emerald-900 text-xs font-black rounded-full mb-4">
+                    <span>💵 Total Repair Cost Logged:</span>
+                    <span>${parseFloat(String(issue.billing_cost)).toFixed(2)}</span>
+                  </div>
+                )}
+
+                {/* Completion Proof Photos */}
+                {issue.resolution_images && issue.resolution_images.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-current/10">
+                    <p className="text-xs font-black uppercase tracking-wider opacity-60 mb-3">Field Completion Proof Photos</p>
+                    <div className="flex flex-wrap gap-3">
+                      {issue.resolution_images.map((imgUrl: string, idx: number) => (
+                        <a 
+                          key={idx} 
+                          href={imgUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="group relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-white shadow-md hover:scale-105 transition-all"
+                        >
+                          <img src={imgUrl} alt={`Resolution proof ${idx + 1}`} className="w-full h-full object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Action Bar (Upvote) */}
             <div className="flex items-center justify-between pt-8 border-t border-zinc-100">

@@ -206,7 +206,7 @@ export function LocationPickerClient({ onLocationSelect, initialLocation }: Loca
           <div className="flex-1">
             <p className="text-text-primary font-medium mb-1">{t('instructions.title')}</p>
             <ul className="text-sm text-text-secondary space-y-1">
-              <li>• {t.rich('instructions.gps', { icon: (chunks) => <Target className="w-3 h-3 inline text-accent-primary" /> })}</li>
+              <li className="flex items-center gap-1.5">• {t('instructions.gps', { icon: '' })} <Target className="w-3.5 h-3.5 inline text-accent-primary flex-shrink-0" /></li>
               <li>• {t('instructions.click')}</li>
               <li>• {t('instructions.drag')}</li>
             </ul>

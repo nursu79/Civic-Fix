@@ -25,11 +25,21 @@ export const IssueCreateSchema = z.object({
 
 export type IssueCreateInput = z.infer<typeof IssueCreateSchema>;
 
+export const ISSUE_STATUSES = ['open', 'in_progress', 'resolved', 'closed'] as const;
+export type IssueStatus = (typeof ISSUE_STATUSES)[number];
+
 export const IssueAdminUpdateSchema = z.object({
-  status: z.string().min(1, "Status is required").optional(),
+  status: z.enum(['open', 'in_progress', 'resolved', 'closed', 'escalated'] as const).optional(),
   assigned_to: z.string().uuid().optional().nullable(),
+  assigned_department: z.string().optional().nullable(),
   note: z.string().optional().nullable(),
-});
+  resolution_notes: z.string().optional().nullable(),
+  resolution_images: z.array(z.string()).optional().nullable(),
+  billing_cost: z.number().optional().nullable(),
+  escalated: z.boolean().optional(),
+  escalation_notes: z.string().optional().nullable(),
+  escalation_admin_response: z.string().optional().nullable(),
+}).passthrough();
 
 export type IssueAdminUpdateInput = z.infer<typeof IssueAdminUpdateSchema>;
 

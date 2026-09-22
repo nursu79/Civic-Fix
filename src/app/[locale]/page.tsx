@@ -17,6 +17,8 @@ import {
   ChevronRight,
   MapPin
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/providers';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Magnetic } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
@@ -48,7 +50,28 @@ export default function HomePage() {
   const locale = useLocale();
   const isAmharic = locale === 'am';
   const supabase = createClient();
-  
+  const { user, profile, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+
+  // Redirect authenticated users away from Welcome Page to their appropriate dashboard instantly
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (user) {
+      const userRole = (profile?.role as string | undefined) || 
+        (document.cookie.includes('sb-user-role=admin') ? 'admin' :
+         document.cookie.includes('sb-user-role=department_officer') ? 'department_officer' : 'citizen');
+
+      if (userRole === 'admin') {
+        window.location.href = '/admin/dashboard';
+      } else if (userRole === 'department_officer') {
+        window.location.href = '/department/dashboard';
+      } else {
+        window.location.href = `/${locale}/dashboard`;
+      }
+    }
+  }, [user, profile, authLoading, locale]);
+
   const [counts, setCounts] = useState({ reported: 0, resolved: 0, users: 0 });
 
   useEffect(() => {
@@ -118,6 +141,18 @@ export default function HomePage() {
     viewport: { once: true, amount: 0.1 },
     variants: fadeInUp
   };
+
+  // Prevent flash of welcome page for authenticated users while redirecting (AFTER ALL HOOKS)
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-500 font-medium text-sm">Redirecting to Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden selection:bg-teal-primary/30 bg-[#F8F9FA]">

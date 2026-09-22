@@ -48,7 +48,10 @@ export function Header() {
     });
   }, [scrollYProgress]);
 
-  const homeHref = user ? `/${locale}/dashboard` : `/${locale}`;
+  const role = (profile?.role as string | undefined);
+  const homeHref = user
+    ? (role === 'admin' ? '/admin/dashboard' : `/${locale}/dashboard`)
+    : `/${locale}`;
 
   const navItems = [
     { href: homeHref, label: t("nav.home") },
@@ -174,19 +177,14 @@ export function Header() {
                         : "bg-teal-primary text-white ring-white",
                     )}
                   >
-                    {profile?.avatar_url ? (
-                      <img 
-                        src={profile.avatar_url} 
-                        alt={profile.display_name || 'User'} 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span>
-                        {profile?.display_name?.[0]?.toUpperCase() ||
-                          user.email?.[0]?.toUpperCase() ||
-                          "U"}
-                      </span>
-                    )}
+                    <img 
+                      src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.display_name || user?.email || 'User')}&background=0d9488&color=fff&bold=true`} 
+                      alt={profile?.display_name || 'User'} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.display_name || user?.email || 'User')}&background=0d9488&color=fff&bold=true`;
+                      }}
+                    />
                   </div>
 
                   <div className="hidden sm:flex flex-col items-start leading-tight">

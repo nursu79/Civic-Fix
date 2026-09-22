@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode, useEffect } from "react";
+import { createContext, useContext, ReactNode, useEffect, useCallback, useMemo } from "react";
 import { useUserSession } from "@/hooks/useUserSession";
 import { User } from "@supabase/supabase-js";
 import { Profile } from "@/lib/supabase";
@@ -46,25 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Handle immediate session detection and global state changes
   useEffect(() => {
-    const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        // Session exists, user session hook will handle the rest
-      }
-    };
-    checkSession();
-
-    // Listen to global auth changes (like token expiry or external sign out)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event) => {
         if (event === 'SIGNED_OUT') {
-          // Clear everything
-          router.push(`/${locale}/login`);
-        } else if (event === 'TOKEN_REFRESHED') {
-          // We have a fresh token, optionally we could reset timers here, 
-          // but our hook handles it gracefully when we manually extend.
+          // Redirect to Welcome Landing Page on logout
+          router.push(`/${locale}`);
         }
       }
     );
@@ -74,15 +60,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [supabase, router, locale]);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (error) throw error;
-  };
+  }, [supabase]);
 
-  const signUp = async (
+  const signUp = useCallback(async (
     email: string,
     password: string,
     displayName: string,
@@ -101,9 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     if (error) throw error;
-  };
+  }, [supabase]);
 
-  const signInWithGoogle = async (redirectPath?: string) => {
+  const signInWithGoogle = useCallback(async (redirectPath?: string) => {
     const nextPath = redirectPath ?? "/";
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -118,14 +104,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     if (error) throw error;
-  };
+  }, [supabase]);
 
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-  };
+  const signOut = useCallback(async () => {
+    try {
+      document.cookie = "sb-user-role=; path=/; max-age=0; SameSite=Lax; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Sign out error:", error);
+    } finally {
+      document.cookie = "sb-user-role=; path=/; max-age=0; SameSite=Lax; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      window.location.href = `/${locale}/login`;
+    }
+  }, [supabase, locale]);
 
-  const updateProfile = async (data: Partial<Profile>, quiet?: boolean) => {
+  const updateProfile = useCallback(async (data: Partial<Profile>, quiet?: boolean) => {
     if (!user) throw new Error("Not authenticated");
 
     const { data: updatedData, error: updateError } = await (supabase as any)
@@ -143,42 +136,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Refetch in background for consistency
     await refetch(quiet);
-  };
+  }, [user, supabase, setProfile, refetch]);
 
-  const resetPasswordForEmail = async (email: string) => {
+  const resetPasswordForEmail = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/${locale}/reset-password`,
     });
     if (error) throw error;
-  };
+  }, [supabase, locale]);
 
-  const updatePassword = async (password: string) => {
+  const updatePassword = useCallback(async (password: string) => {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
-  };
+  }, [supabase]);
+
+  const value = useMemo(() => ({
+    user,
+    profile,
+    isLoading,
+    error,
+    refetch,
+    signIn,
+    signUp,
+    signInWithGoogle,
+    signOut,
+    updateProfile,
+    resetPasswordForEmail,
+    updatePassword,
+  }), [
+    user,
+    profile,
+    isLoading,
+    error,
+    refetch,
+    signIn,
+    signUp,
+    signInWithGoogle,
+    signOut,
+    updateProfile,
+    resetPasswordForEmail,
+    updatePassword,
+  ]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        isLoading,
-        error,
-        refetch,
-        signIn,
-        signUp,
-        signInWithGoogle,
-        signOut,
-        updateProfile,
-        resetPasswordForEmail,
-        updatePassword,
-      }}
-    >
-      {/* 
-        This is where the magic happens. 
-        Skeletons are handled by useUserSession, we just wrap them here so the whole app benefits. 
-        Actually, we can inject the SessionWarningModal here cleanly. 
-      */}
+    <AuthContext.Provider value={value}>
       {showWarning && (
         <SessionWarningModal
           isOpen={showWarning}

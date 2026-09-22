@@ -50,6 +50,17 @@ export function formatNumber(num: number, locale: string = 'en') {
 }
 
 /**
+ * Format priority score cleanly (rounds floating point numbers)
+ */
+export function formatPriorityScore(score: number | null | undefined): string | number {
+  if (score === null || score === undefined || isNaN(Number(score))) return 0;
+  const num = Number(score);
+  if (num === 0) return 0;
+  if (num >= 1) return Math.round(num);
+  return Number(num.toFixed(2));
+}
+
+/**
  * Truncate text with ellipsis
  */
 export function truncate(str: string, length: number) {

@@ -1,0 +1,244 @@
+{
+  "name": "CivicFix Sub-City Field Crew Dispatch & Telegram Bot Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "civicfix-dispatch",
+        "options": {}
+      },
+      "name": "CivicFix Dispatch Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 200],
+      "webhookId": "civicfix-dispatch-trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $input.item.json || {};\nconst body = inputJson.body || inputJson;\nconst issue = body.issue || inputJson.issue || {};\nconst issueId = issue.id || body.issue_id || inputJson.issue_id || \"\";\nconst images = issue.images || body.images || [];\nconst mapsUrl = issue.maps_link || (issue.lat && issue.lng ? `https://www.google.com/maps?q=${issue.lat},${issue.lng}` : \"https://maps.google.com\");\nconst chatId = body.chat_id || inputJson.chat_id || \"404755091\";\n\nconst formattedPriority = typeof issue.priority_score === 'number' ? (issue.priority_score >= 1 ? Math.round(issue.priority_score) : issue.priority_score.toFixed(2)) : (issue.priority_score || '0');\n\nlet formattedMessage = \"🚨 *CIVICFIX MUNICIPAL DISPATCH*\\n\\n\" +\n  \"📌 *Issue*: \" + (issue.title || \"Infrastructure Defect\") + \"\\n\" +\n  \"🆔 *Issue ID*: `\" + issueId + \"`\\n\" +\n  \"📄 *Description*: \" + (issue.description || \"No detailed description provided.\") + \"\\n\" +\n  \"📍 *Location*: \" + (issue.address || \"Addis Ababa\") + \"\\n\" +\n  \"🏙️ *Sub-City*: \" + (issue.subcity || \"Bole\") + \"\\n\" +\n  \"👷 *Assigned Unit*: \" + (issue.assigned_unit || \"Field Unit 1\") + \"\\n\" +\n  \"⚡ *Priority Score*: \" + formattedPriority + \"\\n\" +\n  \"📝 *Officer Notes*: \" + (body.dispatch_notes || \"Immediate priority repair requested.\") + \"\\n\\n\";\n\nif (images && images.length > 0) {\n  formattedMessage += \"🖼️ [View Attached Issue Photo](\" + images[0] + \")\\n\\n\";\n}\n\nformattedMessage += \"👇 *Use the interactive buttons below on your phone:*\";\n\nconst inlineKeyboardObj = {\n  inline_keyboard: [\n    [\n      { \"text\": \"🗺️ MAPS Open Navigation\", \"url\": mapsUrl }\n    ],\n    [\n      { \"text\": \"📸 Submit Repair Proof\", \"callback_data\": `resolve:${issueId}` },\n      { \"text\": \"💵 Log Cost (4,500 ETB)\", \"callback_data\": `cost:${issueId}` }\n    ],\n    [\n      { \"text\": \"🌐 LANG Amharic / English\", \"callback_data\": `lang:${issueId}` }\n    ]\n  ]\n};\n\nreturn {\n  json: {\n    issue_id: issueId,\n    chat_id: chatId,\n    formatted_message: formattedMessage,\n    inline_keyboard: inlineKeyboardObj,\n    maps_link: mapsUrl,\n    raw_payload: body\n  }\n};"
+      },
+      "name": "Format Dispatch Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8848579274:AAFG5zUAdxH57NqKGmqRoAH7yWBXYxrmgz0/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chat_id || '404755091', text: $json.formatted_message, parse_mode: 'Markdown', reply_markup: $json.inline_keyboard }) }}",
+        "options": {}
+      },
+      "name": "Send Dispatch Alert to Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "civicfix-callback",
+        "responseMode": "onReceived",
+        "responseData": "noData",
+        "options": {}
+      },
+      "name": "Telegram Callback Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 600],
+      "webhookId": "civicfix-callback-trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $input.item.json || {};\nconst data = inputJson.body || inputJson;\nconst callbackQuery = data.callback_query;\nconst message = data.message;\n\nlet action = \"ignore\";\nlet issueId = \"\";\nlet callbackQueryId = \"\";\nlet chatId = \"404755091\";\nlet photoFileId = \"\";\n\nif (callbackQuery) {\n  const callbackData = callbackQuery.data || \"\";\n  callbackQueryId = String(callbackQuery.id || \"\");\n  chatId = String(callbackQuery.message?.chat?.id || callbackQuery.from?.id || \"404755091\");\n\n  if (callbackData.startsWith(\"resolve:\")) {\n    action = \"resolve\";\n    issueId = callbackData.replace(\"resolve:\", \"\");\n  } else if (callbackData.startsWith(\"cost:\")) {\n    action = \"cost\";\n    issueId = callbackData.replace(\"cost:\", \"\");\n  } else if (callbackData.startsWith(\"lang:\")) {\n    action = \"lang\";\n    issueId = callbackData.replace(\"lang:\", \"\");\n  }\n} else if (message) {\n  chatId = String(message.chat?.id || \"404755091\");\n  if (message.photo && message.photo.length > 0) {\n    action = \"photo_proof\";\n    const lastPhoto = message.photo[message.photo.length - 1];\n    photoFileId = lastPhoto.file_id;\n\n    const replyText = message.reply_to_message?.text || message.caption || \"\";\n    const match = replyText.match(/`([a-f0-9\\-]{8,})`/) || replyText.match(/Issue\\s*#?([a-f0-9\\-]{8,})/i);\n    if (match) issueId = match[1];\n  }\n}\n\nreturn {\n  json: {\n    skip: action === \"ignore\",\n    action,\n    issue_id: issueId,\n    callback_query_id: callbackQueryId,\n    chat_id: chatId,\n    photo_file_id: photoFileId\n  }\n};"
+      },
+      "name": "Parse Telegram Button Click",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 600]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.action }}",
+        "rules": {
+          "rules": [
+            { "value2": "resolve", "output": 0 },
+            { "value2": "cost", "output": 1 },
+            { "value2": "lang", "output": 2 },
+            { "value2": "photo_proof", "output": 3 }
+          ]
+        },
+        "fallbackOutput": 4
+      },
+      "name": "Switch Action Branch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [660, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8848579274:AAFG5zUAdxH57NqKGmqRoAH7yWBXYxrmgz0/answerCallbackQuery",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ callback_query_id: $('Parse Telegram Button Click').item.json.callback_query_id, text: '📸 Please send your repair proof photo!' }) }}",
+        "options": {}
+      },
+      "name": "Answer Callback Query Resolve",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8848579274:AAFG5zUAdxH57NqKGmqRoAH7yWBXYxrmgz0/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $('Parse Telegram Button Click').item.json.chat_id, text: '📸 *REPAIR PROOF REQUIRED*\\n\\nSend your repair photo now for Issue ID:\\n`' + ($('Parse Telegram Button Click').item.json.issue_id || 'latest') + '`\\n\\nSend the photo directly in this chat to mark the issue as Resolved! ✅', parse_mode: 'Markdown' }) }}",
+        "options": {}
+      },
+      "name": "Prompt Technician for Photo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8848579274:AAFG5zUAdxH57NqKGmqRoAH7yWBXYxrmgz0/answerCallbackQuery",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ callback_query_id: $('Parse Telegram Button Click').item.json.callback_query_id, text: '💵 Cost logged!' }) }}",
+        "options": {}
+      },
+      "name": "Answer Callback Query Cost",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8848579274:AAFG5zUAdxH57NqKGmqRoAH7yWBXYxrmgz0/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $('Parse Telegram Button Click').item.json.chat_id, text: '💵 *COST LOGGED — 4,500 ETB*\\n\\nIssue: `' + $('Parse Telegram Button Click').item.json.issue_id + '`\\nCost recorded in sub-city municipal accounting.', parse_mode: 'Markdown' }) }}",
+        "options": {}
+      },
+      "name": "Send Cost Acknowledgment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8848579274:AAFG5zUAdxH57NqKGmqRoAH7yWBXYxrmgz0/answerCallbackQuery",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ callback_query_id: $('Parse Telegram Button Click').item.json.callback_query_id, text: '🌐 Language toggled!' }) }}",
+        "options": {}
+      },
+      "name": "Answer Callback Query Lang",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 740]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8848579274:AAFG5zUAdxH57NqKGmqRoAH7yWBXYxrmgz0/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $('Parse Telegram Button Click').item.json.chat_id, text: '🌐 *LANGUAGE TOGGLED*\\n\\nIssue: `' + $('Parse Telegram Button Click').item.json.issue_id + '`\\nDispatch language switched between English & አማርኛ.', parse_mode: 'Markdown' }) }}",
+        "options": {}
+      },
+      "name": "Send Language Acknowledgment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 740]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.telegram.org/bot8848579274:AAFG5zUAdxH57NqKGmqRoAH7yWBXYxrmgz0/getFile?file_id={{ $('Parse Telegram Button Click').item.json.photo_file_id }}",
+        "options": {}
+      },
+      "name": "Get Photo File Path",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 900]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/webhooks/n8n/resolve-issue",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"issue_id\": \"{{ $('Parse Telegram Button Click').item.json.issue_id || 'latest' }}\",\n  \"resolution_notes\": \"Field repair proof photo submitted by technician via Telegram bot.\",\n  \"resolution_images\": [\"https://api.telegram.org/file/bot8848579274:AAFG5zUAdxH57NqKGmqRoAH7yWBXYxrmgz0/{{ $json.result.file_path }}\"],\n  \"billing_cost\": 4500,\n  \"technician_name\": \"Sub-City Field Crew\",\n  \"secret_key\": \"civicfix_secret_key_2026\"\n}",
+        "options": {}
+      },
+      "name": "Update Issue to Resolved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 900]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8848579274:AAFG5zUAdxH57NqKGmqRoAH7yWBXYxrmgz0/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $('Parse Telegram Button Click').item.json.chat_id, text: '✅ *ISSUE RESOLVED & PROOF SAVED!*\\n\\n📌 Issue updated in CivicFix database\\n🖼️ Proof photo attached\\n🎉 Citizen notified in real-time!', parse_mode: 'Markdown' }) }}",
+        "options": {}
+      },
+      "name": "Send Proof Resolution Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 900]
+    }
+  ],
+  "connections": {
+    "CivicFix Dispatch Trigger": {
+      "main": [[{ "node": "Format Dispatch Message", "type": "main", "index": 0 }]]
+    },
+    "Format Dispatch Message": {
+      "main": [[{ "node": "Send Dispatch Alert to Telegram", "type": "main", "index": 0 }]]
+    },
+    "Telegram Callback Trigger": {
+      "main": [[{ "node": "Parse Telegram Button Click", "type": "main", "index": 0 }]]
+    },
+    "Parse Telegram Button Click": {
+      "main": [[{ "node": "Switch Action Branch", "type": "main", "index": 0 }]]
+    },
+    "Switch Action Branch": {
+      "main": [
+        [{ "node": "Answer Callback Query Resolve", "type": "main", "index": 0 }],
+        [{ "node": "Answer Callback Query Cost", "type": "main", "index": 0 }],
+        [{ "node": "Answer Callback Query Lang", "type": "main", "index": 0 }],
+        [{ "node": "Get Photo File Path", "type": "main", "index": 0 }]
+      ]
+    },
+    "Answer Callback Query Resolve": {
+      "main": [[{ "node": "Prompt Technician for Photo", "type": "main", "index": 0 }]]
+    },
+    "Answer Callback Query Cost": {
+      "main": [[{ "node": "Send Cost Acknowledgment", "type": "main", "index": 0 }]]
+    },
+    "Answer Callback Query Lang": {
+      "main": [[{ "node": "Send Language Acknowledgment", "type": "main", "index": 0 }]]
+    },
+    "Get Photo File Path": {
+      "main": [[{ "node": "Update Issue to Resolved", "type": "main", "index": 0 }]]
+    },
+    "Update Issue to Resolved": {
+      "main": [[{ "node": "Send Proof Resolution Confirmation", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {}
+}

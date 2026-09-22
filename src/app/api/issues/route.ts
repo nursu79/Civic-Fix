@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { IssueCreateSchema, type IssueCreateInput } from "@/lib/validation";
 
+// Restrict CORS to own origin — never use wildcard (* ) on a credentialed API
+const ALLOWED_ORIGIN =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\.supabase\.co.*/, '') ??
+  'http://localhost:3000';
+
 const ISSUE_CORS_HEADERS = {
   "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Vary": "Origin",
 };
 
 export async function OPTIONS() {
@@ -48,9 +55,7 @@ export async function GET(request: NextRequest) {
   let query = supabase.from("issues").select(
     `
       *,
-      reporter:profiles!reporter_id(id, display_name, avatar_url),
-      comments:comments(count),
-      upvotes:upvotes(count)
+      reporter:profiles!reporter_id(id, display_name, avatar_url)
     `,
     { count: 'exact' }
   );
@@ -59,9 +64,10 @@ export async function GET(request: NextRequest) {
   if (status) query = query.eq("status", status);
   if (reporterId) query = query.eq("reporter_id", reporterId);
   
-  // Search title and description
+  // Search title and description — use separate ilike filters to avoid PostgREST injection
   if (search) {
-    query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    const safe = search.replace(/[%_\\]/g, '\\$&').slice(0, 200); // escape wildcards, cap length
+    query = query.or(`title.ilike.%${safe}%,description.ilike.%${safe}%`);
   }
 
   // Filter by location (city/address)
@@ -99,8 +105,21 @@ export async function GET(request: NextRequest) {
       query = query.order("created_at", { ascending: false });
   }
 
-  query = query.range(offset, offset + limit - 1);
-  const { data, error, count } = await query;
+  let { data, error, count } = await query;
+
+  if (error) {
+    console.warn("GET /api/issues primary query error, attempting fallback:", error.message);
+    const fallbackQuery = supabase
+      .from("issues")
+      .select("*", { count: 'exact' })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    const fallbackRes = await fallbackQuery;
+    data = fallbackRes.data;
+    error = fallbackRes.error;
+    count = fallbackRes.count;
+  }
 
   if (error) {
     return NextResponse.json(
@@ -110,14 +129,11 @@ export async function GET(request: NextRequest) {
   }
 
   const issues = (data ?? []).map((row: any) => {
-    const issueWithCounts = {
+    return withLatLng({
       ...row,
-      comment_count: row.comments?.[0]?.count ?? row.comment_count ?? 0,
-      upvote_count: row.upvotes?.[0]?.count ?? row.upvote_count ?? 0,
-    };
-    delete issueWithCounts.comments;
-    delete issueWithCounts.upvotes;
-    return withLatLng(issueWithCounts);
+      comment_count: row.comment_count ?? 0,
+      upvote_count: row.upvote_count ?? 0,
+    });
   });
   return NextResponse.json(
     { issues, count, offset, limit },
@@ -210,9 +226,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!rpcError && Array.isArray(duplicates) && duplicates.length > 0) {
+      // 409 Conflict: callers can distinguish duplicate detection from success (201)
       return NextResponse.json(
         { warning: "Similar issues found nearby", duplicates },
-        { status: 200, headers: ISSUE_CORS_HEADERS },
+        { status: 409, headers: ISSUE_CORS_HEADERS },
       );
     }
   }
@@ -221,6 +238,7 @@ export async function POST(request: NextRequest) {
     title,
     description: description ?? null,
     category,
+    assigned_department: category,
     lat: lat ?? null,
     lng: lng ?? null,
     address,
@@ -242,6 +260,26 @@ export async function POST(request: NextRequest) {
   }
 
   const issue = data ? withLatLng(data as Record<string, unknown>) : data;
+
+  // Trigger n8n Webhook asynchronously
+  try {
+    const { triggerN8nWebhook } = await import("@/lib/webhooks");
+    triggerN8nWebhook({
+      event: "issue.created",
+      issue_id: (issue as any).id,
+      title: (issue as any).title,
+      description: (issue as any).description,
+      category: (issue as any).category,
+      status: (issue as any).status || "open",
+      address: (issue as any).address,
+      reporter_id: user.id,
+      assigned_department: category,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to trigger n8n webhook on issue creation:", err);
+  }
+
   return NextResponse.json(
     { issue },
     { status: 201, headers: ISSUE_CORS_HEADERS },

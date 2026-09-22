@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { Profile } from '@/lib/supabase';
@@ -21,7 +21,9 @@ export function useAuth(): UseAuthReturn {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const supabase = createClient();
+  // Stable client — recreating on every render caused infinite re-renders
+  // because [supabase] was listed as a useEffect dependency
+  const supabase = useMemo(() => createClient(), []);
   
   useEffect(() => {
     // Get initial session
@@ -101,8 +103,26 @@ export function useAuth(): UseAuthReturn {
   };
   
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn('SignOut warning:', err);
+    }
+    // Wipes all role cookies and session storage
+    if (typeof window !== 'undefined') {
+      document.cookie = 'sb-user-role=; Max-Age=0; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'sb-user-role=; Max-Age=0; path=/';
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {
+        // Storage access error fallback
+      }
+      setUser(null);
+      setProfile(null);
+      const currentLocale = window.location.pathname.startsWith('/am') ? 'am' : 'en';
+      window.location.replace(`/${currentLocale}/login`);
+    }
   };
   
   const updateProfile = async (data: Partial<Profile>) => {

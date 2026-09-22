@@ -94,7 +94,6 @@ export function useIssues(options: UseIssuesOptions = {}): UseIssuesReturn & { h
 
         const mapped: Issue[] = data.map((d: any) => ({
           ...d,
-          location: { lat: d.lat || 0, lng: d.lng || 0 },
           reporter_name: d.reporter?.display_name || 'Anonymous',
           has_upvoted: upvotedIds.has(d.id)
         }));

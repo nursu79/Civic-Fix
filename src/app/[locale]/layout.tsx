@@ -30,23 +30,17 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className="dark">
-      <body className="min-h-screen antialiased overflow-x-hidden">
-        <NextIntlClientProvider messages={messages}>
-          <AuthProvider>
-            <div className="relative flex min-h-screen flex-col">
-              {/* Ultra-Luxury Atmosphere Layers - Clean */}
-              
-              <Header />
-              <main className="flex-1 pt-24 relative z-10">
-                {children}
-              </main>
-              <Footer />
-            </div>
-          </AuthProvider>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages}>
+      <AuthProvider>
+        <div className="relative flex min-h-screen flex-col">
+          <Header />
+          <main className="flex-1 pt-24 relative z-10">
+            {children}
+          </main>
+          <Footer />
+        </div>
+      </AuthProvider>
+    </NextIntlClientProvider>
   );
 }
 

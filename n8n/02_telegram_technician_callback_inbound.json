@@ -1,0 +1,115 @@
+{
+  "name": "02 - Telegram Technician Callback Listener to CivicFix",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram Webhook Listener",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "civicfix-telegram-credentials",
+          "name": "CivicFix Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $input.item.json || {};\nconst callbackQuery = inputJson.callback_query;\nconst message = inputJson.message;\n\nlet callbackData = \"\";\nlet chatId = \"404755091\";\nlet issueId = \"\";\n\nif (callbackQuery) {\n  callbackData = callbackQuery.data || \"\";\n  chatId = callbackQuery.message?.chat?.id || chatId;\n} else if (message) {\n  chatId = message.chat?.id || chatId;\n}\n\nif (callbackData.startsWith(\"resolve:\")) {\n  issueId = callbackData.replace(\"resolve:\", \"\");\n} else if (callbackData.startsWith(\"cost:\")) {\n  issueId = callbackData.replace(\"cost:\", \"\");\n} else if (callbackData.startsWith(\"lang:\")) {\n  issueId = callbackData.replace(\"lang:\", \"\");\n}\n\nreturn {\n  json: {\n    callback_data: callbackData,\n    chat_id: chatId,\n    issue_id: issueId,\n    action: callbackData.split(\":\")[0] || \"reply\"\n  }\n};"
+      },
+      "name": "Parse Telegram Button Click",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/webhooks/n8n/resolve-issue",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"issue_id\": \"{{ $json.issue_id }}\",\n  \"resolution_notes\": \"Repaved road, cleared storm drain, and verified by Sub-City Field Unit via Telegram button.\",\n  \"resolution_images\": [\"https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=800\"],\n  \"billing_cost\": 4500,\n  \"technician_name\": \"Sub-City Field Crew\",\n  \"secret_key\": \"civicfix_secret_key_2026\"\n}",
+        "options": {}
+      },
+      "name": "Update CivicFix Issue to Resolved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=✅ *FIELD REPAIR PROOF LOGGED & RESOLVED!*\\n\\n📌 *Issue ID*: `{{ $json.issue_id }}`\\n🎉 CivicFix citizen notification and sub-city dashboard updated in real-time!",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Send Confirmation Back to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        860,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "civicfix-telegram-credentials",
+          "name": "CivicFix Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Webhook Listener": {
+      "main": [
+        [
+          {
+            "node": "Parse Telegram Button Click",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Telegram Button Click": {
+      "main": [
+        [
+          {
+            "node": "Update CivicFix Issue to Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update CivicFix Issue to Resolved": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation Back to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}

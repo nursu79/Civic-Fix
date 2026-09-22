@@ -55,10 +55,14 @@ export default function DashboardPage() {
 
   // Auth Guard
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.replace(`/${locale}/login`);
+    if (!isLoading) {
+      if (!user) {
+        router.replace(`/${locale}/login`);
+      } else if (profile?.role === 'admin') {
+        router.replace('/admin');
+      }
     }
-  }, [isLoading, user, router, locale]);
+  }, [isLoading, user, profile, router, locale]);
 
   // Load User Data into Form
   useEffect(() => {

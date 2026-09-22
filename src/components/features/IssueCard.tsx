@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { MapPin, MessageSquare, ThumbsUp, Clock, ArrowUpRight, Maximize2, Flag } from 'lucide-react';
 import { Card, StatusBadge, CategoryBadge } from '@/components/ui';
 import { Issue } from '@/lib/types';
-import { cn, formatRelativeTime, formatNumber, categories, Category, statuses, Status } from '@/lib/utils';
+import { cn, formatRelativeTime, formatNumber, formatPriorityScore, categories, Category, statuses, Status } from '@/lib/utils';
 
 interface IssueCardProps {
   issue: Issue;
@@ -169,7 +169,7 @@ export function IssueCard({ issue, view = 'grid', onUpvote }: IssueCardProps) {
                  <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1 text-amber-500 text-xs font-bold" title="Priority Score">
                        <Flag className="w-3.5 h-3.5" />
-                       <span> {issue.priority_score || 0}</span>
+                       <span> {formatPriorityScore(issue.priority_score)}</span>
                     </div>
                     <div className="flex items-center gap-1 text-slate-400 text-xs font-bold">
                        <MessageSquare className="w-3.5 h-3.5" />

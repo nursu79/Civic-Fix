@@ -142,11 +142,14 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center gap-4">
             <div className="relative group">
               <div className="w-32 h-32 rounded-full ring-4 ring-white shadow-xl overflow-hidden bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white text-4xl font-black">
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.display_name || ''} className="w-full h-full object-cover" />
-                ) : (
-                  profile.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'
-                )}
+                <img
+                  src={profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.display_name || user.email || 'CivicFix')}&background=0d9488&color=fff&bold=true&size=256`}
+                  alt={profile.display_name || 'User Profile'}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.display_name || user.email || 'CivicFix')}&background=0d9488&color=fff&bold=true&size=256`;
+                  }}
+                />
                 
                 {isUploading && (
                   <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center">
